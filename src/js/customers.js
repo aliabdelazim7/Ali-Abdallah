@@ -268,9 +268,7 @@ async function handleCustomerFormSubmit(e) {
 
     closeCustomerModal();
     showToast(`تم تسجيل حساب العميل [${name}] بنجاح`, "success");
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
   } catch (error) {
     showToast(`فشل تسجيل العميل أو الفاتورة: ${error.message}`, "error");
   } finally {
@@ -374,9 +372,7 @@ window.archiveCustomer = async function(customerId) {
     const updatedCust = { ...custObj, Status: "Archived" };
     await api.saveCustomer(updatedCust);
     showToast("تم أرشفة العميل بنجاح", "success");
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
   } catch (error) {
     showToast(`فشلت أرشفة العميل: ${error.message}`, "error");
   } finally {
@@ -401,9 +397,7 @@ window.restoreCustomer = async function(customerId) {
     
     await api.saveCustomer(updatedCust);
     showToast("تم استرجاع العميل بنجاح", "success");
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
   } catch (error) {
     showToast(`فشلت عملية الاسترجاع: ${error.message}`, "error");
   } finally {
@@ -636,9 +630,7 @@ window.submitSingleInvoicePayment = async function(invoiceNumber, fixedAmount = 
       : `تم تسجيل دفعة بقيمة ${formatCurrency(amount)} للفاتورة ${invoiceNumber}`;
     showToast(successMsg, "success");
     
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
     
     // Refresh drawer view
     if (activeDrawerCustomerId) {
@@ -694,9 +686,8 @@ async function handleDrawerPaymentSubmit() {
 
     showToast(`تم تحصيل ${formatCurrency(amountToCollect)} وتسوية مديونيات العميل بنجاح!`, "success");
     
-    if (!api.isMockMode) {
-      await api.syncData();
-    } else {
+    // Refresh drawer view immediately (handles both mock and live mode)
+    if (activeDrawerCustomerId) {
       openCustomerDrawer(activeDrawerCustomerId);
     }
   } catch (error) {

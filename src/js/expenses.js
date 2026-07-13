@@ -110,9 +110,7 @@ async function handleExpenseFormSubmit(e) {
     await api.saveExpense(payload);
     closeExpenseModal();
     showToast("تم تسجيل بند المصروف بنجاح وتحديث الأرباح", "success");
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
   } catch (error) {
     showToast(`فشل تسجيل بند المصروف: ${error.message}`, "error");
   } finally {

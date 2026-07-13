@@ -312,9 +312,7 @@ async function handleProductFormSubmit(e) {
     await api.saveProduct(payload);
     closeProductModal();
     showToast(`تم حفظ المنتج [${name}] بنجاح في قاعدة البيانات`, "success");
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
   } catch (error) {
     showToast(`فشل حفظ المنتج: ${error.message}`, "error");
   } finally {
@@ -383,9 +381,7 @@ window.archiveProduct = async function(productId) {
     const updatedProd = { ...prodObj, Status: "Archived" };
     await api.saveProduct(updatedProd);
     showToast("تم أرشفة المنتج بنجاح", "success");
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
   } catch (error) {
     showToast(`فشلت عملية الأرشفة: ${error.message}`, "error");
   } finally {

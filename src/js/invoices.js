@@ -488,11 +488,9 @@ async function saveQuickCustomerFromCheckout() {
     document.getElementById("pay-modal-quick-customer-form").classList.add("hidden");
     document.getElementById("pay-modal-cust-name").value = "";
     document.getElementById("pay-modal-cust-phone").value = "";
-
     showToast(`تم تسجيل حساب العميل [${name}] بنجاح`, "success");
     
-    // Reload state and sync options
-    await api.syncData();
+    // Sync option lists
     populatePOSCustomerDropdown();
     populatePayModalCustomerDropdown();
     
@@ -557,7 +555,18 @@ async function finalizePOSOrder(shouldPrint = true) {
     customerName = custObj ? custObj["Name"] : "عميل مجهول";
   }
 
-  const nextInvoiceNumber = "INV-" + Math.floor(10000 + Math.random() * 90000);
+  // Generate next sequential invoice number to avoid collisions
+  let nextInvoiceNumber = "INV-10001";
+  const existingInvoices = window.appState.db.Invoices || [];
+  if (existingInvoices.length > 0) {
+    const numbers = existingInvoices.map(inv => {
+      const parts = String(inv["Invoice Number"]).split("-");
+      const num = parseInt(parts[1], 10);
+      return isNaN(num) ? 0 : num;
+    });
+    const maxNumber = Math.max(...numbers, 10000);
+    nextInvoiceNumber = "INV-" + (maxNumber + 1);
+  }
 
   const invoice = {
     "Invoice Number": nextInvoiceNumber,
@@ -603,9 +612,7 @@ async function finalizePOSOrder(shouldPrint = true) {
     renderPOSCart();
     showToast("تم تسجيل المعاملة وحفظ الفاتورة بنجاح!", "success");
     
-    if (!api.isMockMode) {
-      await api.syncData();
-    }
+    // Sync automatically handled by api write listeners
   } catch (error) {
     showToast(`فشل إتمام العملية: ${error.message}`, "error");
   } finally {
