@@ -111,6 +111,12 @@ window.renderPOS = function() {
   renderPOSCatalog();
   renderPOSCart();
   renderSuspendedCarts();
+
+  // Autofocus POS search input for easy barcode scanning
+  const posSearchInput = document.getElementById("pos-product-search");
+  if (posSearchInput) {
+    posSearchInput.focus();
+  }
 };
 
 /**
@@ -234,7 +240,8 @@ window.addProductToCart = function(productId) {
       return;
     }
     posCart[cartIndex].quantity = nextQty;
-    posCart[cartIndex].totalPrice = nextQty * parseFloat(prodObj["Selling Price"]);
+    const unitPrice = posCart[cartIndex].customPrice !== undefined ? posCart[cartIndex].customPrice : parseFloat(prodObj["Selling Price"]);
+    posCart[cartIndex].totalPrice = nextQty * unitPrice;
   } else {
     if (maxQty <= 0) {
       showToast(`عذراً: المنتج غير متوفر بالمخزن حالياً.`, "warning");
@@ -278,12 +285,16 @@ function renderPOSCart() {
   container.innerHTML = posCart.map((item, index) => {
     cartTotal += item.totalPrice;
     itemsCount += item.quantity;
+    
+    const unitPrice = item.customPrice !== undefined ? item.customPrice : parseFloat(item.product["Selling Price"]);
 
     return `
       <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs">
         <div class="flex-1 pl-3 text-right">
           <h5 class="font-bold text-slate-800 line-clamp-1">${escapeHtml(item.product["Product Name"])}</h5>
-          <span class="text-[10px] text-slate-400 font-medium font-mono">${formatCurrency(item.product["Selling Price"])} للوحدة</span>
+          <span onclick="editCartItemPrice(${index})" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer underline decoration-dotted" title="اضغط لتعديل سعر البيع للقطعة">
+            ${formatCurrency(unitPrice)} للوحدة ✏️
+          </span>
         </div>
         <div class="flex items-center space-x-reverse space-x-3">
           <div class="flex items-center space-x-reverse space-x-1.5 bg-white border border-slate-200 rounded-lg p-0.5">
@@ -328,7 +339,8 @@ window.changeCartItemQuantity = function(index, delta) {
   }
 
   posCart[index].quantity = newQty;
-  posCart[index].totalPrice = newQty * parseFloat(item.product["Selling Price"]);
+  const unitPrice = item.customPrice !== undefined ? item.customPrice : parseFloat(item.product["Selling Price"]);
+  posCart[index].totalPrice = newQty * unitPrice;
   renderPOSCart();
 };
 
@@ -339,6 +351,24 @@ window.removeCartItem = function(index) {
 
 window.clearPOSCart = function() {
   posCart = [];
+  renderPOSCart();
+};
+
+/**
+ * Prompt to edit unit price for a item in the cart
+ */
+window.editCartItemPrice = function(index) {
+  const item = posCart[index];
+  const currentPrice = item.customPrice !== undefined ? item.customPrice : parseFloat(item.product["Selling Price"]);
+  const newPriceStr = prompt(`تعديل سعر البيع للقطعة للمنتج [${item.product["Product Name"]}]:`, currentPrice);
+  if (newPriceStr === null) return;
+  const newPrice = parseFloat(newPriceStr);
+  if (isNaN(newPrice) || newPrice < 0) {
+    showToast("تنبيه: يجب إدخال سعر صحيح أكبر من أو يساوي الصفر.", "warning");
+    return;
+  }
+  posCart[index].customPrice = newPrice;
+  posCart[index].totalPrice = item.quantity * newPrice;
   renderPOSCart();
 };
 
@@ -464,8 +494,8 @@ async function saveQuickCustomerFromCheckout() {
   const name = document.getElementById("pay-modal-cust-name").value.trim();
   const phone = document.getElementById("pay-modal-cust-phone").value.trim();
 
-  if (!name || !phone) {
-    showToast("برجاء كتابة اسم العميل ورقم الهاتف.", "warning");
+  if (!name) {
+    showToast("برجاء كتابة اسم العميل أولاً.", "warning");
     return;
   }
 
@@ -583,6 +613,7 @@ async function finalizePOSOrder(shouldPrint = true) {
   };
 
   const invoiceItems = posCart.map(item => {
+    const unitPrice = item.customPrice !== undefined ? item.customPrice : parseFloat(item.product["Selling Price"]);
     return {
       "Item ID": generateId("ITEM"),
       "Invoice Number": nextInvoiceNumber,
@@ -590,7 +621,7 @@ async function finalizePOSOrder(shouldPrint = true) {
       "Product Name": item.product["Product Name"],
       "Quantity": item.quantity,
       "Purchase Price": item.product["Purchase Price"],
-      "Selling Price": item.product["Selling Price"],
+      "Selling Price": unitPrice,
       "Total Price": item.totalPrice
     };
   });

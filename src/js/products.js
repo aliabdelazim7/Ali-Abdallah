@@ -59,6 +59,12 @@ document.addEventListener("DOMContentLoaded", () => {
       handleAddCategorySubmit();
     }
   });
+
+  document.getElementById("prod-form-barcode")?.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+    }
+  });
 });
 
 /**
