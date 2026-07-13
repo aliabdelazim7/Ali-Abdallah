@@ -252,19 +252,14 @@ window.saveCustomCategories = saveCustomCategories;
  * Sync Unique Categories into Selection filtering and Form Autocompletion
  */
 function populateCategoryFilters(products) {
-  const activeProds = products.filter(p => (p["Status"] || "Active") !== "Archived");
-  const customCategories = getCustomCategories();
-  const categories = [...new Set([
-    ...activeProds.map(p => p["Category"]).filter(Boolean),
-    ...customCategories
-  ])];
+  const customCategories = getCustomCategories().sort();
 
   const categoryFilter = document.getElementById("prod-filter-category");
   if (categoryFilter) {
     const selected = categoryFilter.value;
     categoryFilter.innerHTML = `<option value="All">جميع الأقسام</option>` + 
-      categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-    if (categories.includes(selected)) {
+      customCategories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    if (customCategories.includes(selected)) {
       categoryFilter.value = selected;
     } else {
       categoryFilter.value = "All";
@@ -273,7 +268,7 @@ function populateCategoryFilters(products) {
 
   const datalist = document.getElementById("categories-datalist");
   if (datalist) {
-    datalist.innerHTML = categories.map(c => `<option value="${escapeHtml(c)}"></option>`).join("");
+    datalist.innerHTML = customCategories.map(c => `<option value="${escapeHtml(c)}"></option>`).join("");
   }
 }
 

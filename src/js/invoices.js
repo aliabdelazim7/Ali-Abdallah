@@ -87,25 +87,21 @@ window.renderPOS = function() {
   const products = window.appState.db.Products || [];
   const activeProds = products.filter(p => (p["Status"] || "Active") !== "Archived");
   
-  const customCategories = (typeof window.getCustomCategories === "function") 
+  const customCategories = ((typeof window.getCustomCategories === "function") 
     ? window.getCustomCategories() 
     : (function() {
         try {
           const saved = localStorage.getItem("ali_custom_categories");
           return saved ? JSON.parse(saved) : [];
         } catch(e) { return []; }
-      })();
-  const categories = [...new Set([
-    ...activeProds.map(p => p["Category"]).filter(Boolean),
-    ...customCategories
-  ])];
+      })()).sort();
 
   const catFilter = document.getElementById("pos-category-filter");
   if (catFilter) {
     const selected = catFilter.value;
     catFilter.innerHTML = `<option value="All">جميع الأقسام</option>` + 
-      categories.map(c => `<option value="${c}">${c}</option>`).join("");
-    if (categories.includes(selected)) catFilter.value = selected;
+      customCategories.map(c => `<option value="${c}">${c}</option>`).join("");
+    if (customCategories.includes(selected)) catFilter.value = selected;
   }
 
   renderPOSCatalog();
