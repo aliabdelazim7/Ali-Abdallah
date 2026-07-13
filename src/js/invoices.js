@@ -76,6 +76,30 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("pay-modal-cust-save")?.addEventListener("click", saveQuickCustomerFromCheckout);
+
+  // Mobile POS Tab switcher
+  const tabCatalog = document.getElementById("mobile-pos-tab-catalog");
+  const tabCart = document.getElementById("mobile-pos-tab-cart");
+  const panelCatalog = document.getElementById("pos-catalog-panel");
+  const panelCart = document.getElementById("pos-cart-panel");
+
+  if (tabCatalog && tabCart && panelCatalog && panelCart) {
+    tabCatalog.addEventListener("click", () => {
+      panelCatalog.classList.remove("hidden");
+      panelCart.classList.add("hidden");
+      
+      tabCatalog.className = "flex-1 py-2.5 text-center text-xs font-bold rounded-lg bg-indigo-600 text-white transition-all";
+      tabCart.className = "flex-1 py-2.5 text-center text-xs font-bold rounded-lg text-slate-600 bg-slate-50 hover:bg-slate-100 transition-all flex items-center justify-center space-x-reverse space-x-1.5";
+    });
+
+    tabCart.addEventListener("click", () => {
+      panelCatalog.classList.add("hidden");
+      panelCart.classList.remove("hidden");
+
+      tabCart.className = "flex-1 py-2.5 text-center text-xs font-bold rounded-lg bg-indigo-600 text-white transition-all flex items-center justify-center space-x-reverse space-x-1.5";
+      tabCatalog.className = "flex-1 py-2.5 text-center text-xs font-bold rounded-lg text-slate-600 bg-slate-50 hover:bg-slate-100 transition-all";
+    });
+  }
 });
 
 /**
@@ -260,6 +284,8 @@ function renderPOSCart() {
   const container = document.getElementById("pos-cart-items-container");
   if (!container) return;
 
+  const mobileCartBadge = document.getElementById("mobile-pos-cart-badge");
+
   if (posCart.length === 0) {
     container.innerHTML = `
       <div class="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-2">
@@ -271,6 +297,7 @@ function renderPOSCart() {
     document.getElementById("pos-checkout-btn").disabled = true;
     document.getElementById("pos-cart-count").textContent = "0";
     document.getElementById("pos-cart-total").textContent = formatCurrency(0);
+    if (mobileCartBadge) mobileCartBadge.textContent = "0";
     lucide.createIcons();
     return;
   }
@@ -312,6 +339,7 @@ function renderPOSCart() {
   document.getElementById("pos-checkout-btn").disabled = false;
   document.getElementById("pos-cart-count").textContent = itemsCount;
   document.getElementById("pos-cart-total").textContent = formatCurrency(cartTotal);
+  if (mobileCartBadge) mobileCartBadge.textContent = itemsCount;
 
   lucide.createIcons();
 }
