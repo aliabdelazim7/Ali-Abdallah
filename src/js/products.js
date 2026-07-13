@@ -465,16 +465,25 @@ function renderCategoriesModalList() {
 
   container.innerHTML = categories.map(cat => {
     const count = activeProds.filter(p => p["Category"] === cat).length;
-    const deleteBtnHtml = count > 0 
-      ? `<span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">نشط: ${count} منتج</span>`
-      : `<button onclick="deleteCategory('${cat}')" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded transition-all" title="حذف القسم">
-           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-         </button>`;
+    
+    const countBadge = count > 0 
+      ? `<span class="text-[10px] text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-full shrink-0">نشط: ${count}</span>` 
+      : "";
+
+    const editBtnHtml = `<button onclick="renameCategory('${escapeHtml(cat)}')" class="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded transition-all shrink-0" title="تعديل اسم القسم">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>`;
+
+    const deleteBtnHtml = `<button onclick="deleteCategory('${escapeHtml(cat)}')" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded transition-all shrink-0" title="حذف القسم">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+    </button>`;
 
     return `
       <div class="flex items-center justify-between bg-white border border-slate-200/80 p-2 rounded-lg text-xs hover:border-slate-300 transition-all">
-        <span class="font-bold text-slate-700">${escapeHtml(cat)}</span>
-        <div class="flex items-center space-x-reverse space-x-1.5">
+        <span class="font-bold text-slate-700 truncate mr-2" title="${escapeHtml(cat)}">${escapeHtml(cat)}</span>
+        <div class="flex items-center space-x-reverse space-x-1.5 shrink-0">
+          ${countBadge}
+          ${editBtnHtml}
           ${deleteBtnHtml}
         </div>
       </div>
@@ -524,9 +533,51 @@ function handleAddCategorySubmit() {
 }
 
 /**
- * Delete a custom category if it has no products
+ * Delete a custom category (prompt to move products if active count > 0)
  */
-window.deleteCategory = function(catName) {
+window.deleteCategory = async function(catName) {
+  const products = window.appState.db.Products || [];
+  const activeProds = products.filter(p => (p["Status"] || "Active") !== "Archived");
+  const count = activeProds.filter(p => p["Category"] === catName).length;
+
+  if (count > 0) {
+    const confirmTransfer = confirm(`هذا القسم يحتوي على عدد ${count} من المنتجات النشطة.\n\nهل تريد نقل جميع هذه المنتجات إلى قسم "عام" وحذف القسم "${catName}" نهائياً؟`);
+    if (!confirmTransfer) return;
+
+    showLoader("جاري نقل المنتجات وحذف القسم...");
+    try {
+      // 1. Move products to "عام"
+      for (let product of products) {
+        if (product["Category"] === catName) {
+          product["Category"] = "عام";
+          await api.saveProduct(product);
+        }
+      }
+
+      // 2. Update custom categories
+      let customCategories = getCustomCategories();
+      customCategories = customCategories.filter(c => c !== catName);
+      if (!customCategories.includes("عام")) {
+        customCategories.push("عام");
+      }
+      saveCustomCategories(customCategories);
+
+      // 3. Force database sync
+      if (typeof syncDatabase === "function") {
+        await syncDatabase(true);
+      }
+
+      showToast(`تم نقل المنتجات إلى قسم "عام" وحذف القسم "${catName}" بنجاح.`, "success");
+    } catch (err) {
+      console.error(err);
+      showToast(`حدث خطأ أثناء نقل وحذف القسم: ${err.message}`, "error");
+    } finally {
+      hideLoader();
+      renderCategoriesModalList();
+    }
+    return;
+  }
+
   const confirmDelete = confirm(`هل تريد بالتأكيد حذف القسم [${catName}]؟`);
   if (!confirmDelete) return;
 
@@ -540,4 +591,61 @@ window.deleteCategory = function(catName) {
     window.renderPOS();
   }
   showToast(`تم حذف القسم [${catName}] بنجاح`, "info");
+};
+
+/**
+ * Rename an existing category and update all products belonging to it
+ */
+window.renameCategory = async function(oldName) {
+  const newName = prompt(`تعديل اسم القسم "${oldName}" إلى:`, oldName);
+  if (!newName) return;
+  const trimmedNewName = newName.trim();
+  if (!trimmedNewName || trimmedNewName === oldName) return;
+
+  const products = window.appState.db.Products || [];
+  const activeProds = products.filter(p => (p["Status"] || "Active") !== "Archived");
+  
+  // Check if target name already exists
+  const customCategories = getCustomCategories();
+  const allExistingCategories = [...new Set([
+    ...activeProds.map(p => p["Category"]).filter(Boolean),
+    ...customCategories
+  ])];
+  if (allExistingCategories.some(c => c.toLowerCase() === trimmedNewName.toLowerCase())) {
+    showToast(`تنبيه: يوجد قسم آخر بالفعل بنفس الاسم "${trimmedNewName}"!`, "warning");
+    return;
+  }
+
+  showLoader("جاري تعديل اسم القسم وتحديث المنتجات...");
+  try {
+    // 1. Update custom categories list
+    let updatedCustom = customCategories.filter(c => c !== oldName);
+    if (!updatedCustom.includes(trimmedNewName)) {
+      updatedCustom.push(trimmedNewName);
+    }
+    saveCustomCategories(updatedCustom);
+
+    // 2. Update products belonging to old name
+    let updatedCount = 0;
+    for (let product of products) {
+      if (product["Category"] === oldName) {
+        product["Category"] = trimmedNewName;
+        await api.saveProduct(product);
+        updatedCount++;
+      }
+    }
+
+    // 3. Force database sync
+    if (typeof syncDatabase === "function") {
+      await syncDatabase(true);
+    }
+
+    showToast(`تم تعديل اسم القسم إلى "${trimmedNewName}" بنجاح (تم تحديث ${updatedCount} منتج).`, "success");
+  } catch (err) {
+    console.error(err);
+    showToast(`حدث خطأ أثناء تعديل القسم: ${err.message}`, "error");
+  } finally {
+    hideLoader();
+    renderCategoriesModalList();
+  }
 };
