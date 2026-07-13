@@ -10,7 +10,7 @@ const isDemoActive = () => localStorage.getItem("ali_demo_mode") === "true" || s
 
 // Default settings object - Localized to user's Google Sheets URL
 const defaultSettings = {
-  webAppUrl: "",
+  webAppUrl: "https://script.google.com/macros/s/AKfycbw0OpumdKzQ48XBdUJXgDTpQ9yE3bC_b9J00O1J4UQzcjRduwl-oGSTxqEO0ybZ-Eio/exec",
   businessName: "محلات علي عبدالله للأدوات الكهربائية",
   address: "",
   phone: "+201018907086",
