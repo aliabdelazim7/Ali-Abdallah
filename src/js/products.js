@@ -207,16 +207,40 @@ window.renderProducts = function() {
 
 function getCustomCategories() {
   try {
+    // 1. Try to load from synced Google Sheets Settings
+    if (window.appState && window.appState.db && Array.isArray(window.appState.db.Settings)) {
+      const dbSetting = window.appState.db.Settings.find(s => s.Key === "Custom Categories");
+      if (dbSetting && dbSetting.Value) {
+        try {
+          const parsed = JSON.parse(dbSetting.Value);
+          if (Array.isArray(parsed)) {
+            localStorage.setItem("ali_custom_categories", dbSetting.Value);
+            return parsed;
+          }
+        } catch (e) {
+          console.error("Error parsing custom categories from dbSettings:", e);
+        }
+      }
+    }
+    // 2. Fallback to localStorage
     const saved = localStorage.getItem("ali_custom_categories");
     return saved ? JSON.parse(saved) : [];
   } catch (e) {
     return [];
   }
 }
+window.getCustomCategories = getCustomCategories;
 
 function saveCustomCategories(categories) {
   localStorage.setItem("ali_custom_categories", JSON.stringify(categories));
+  // Sync to Google Sheets settings table
+  if (window.api && typeof window.api.updateSettings === "function") {
+    window.api.updateSettings([
+      { Key: "Custom Categories", Value: JSON.stringify(categories) }
+    ]).catch(err => console.error("Failed to sync custom categories to settings sheet:", err));
+  }
 }
+window.saveCustomCategories = saveCustomCategories;
 
 /**
  * Sync Unique Categories into Selection filtering and Form Autocompletion

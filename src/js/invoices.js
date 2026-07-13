@@ -87,12 +87,14 @@ window.renderPOS = function() {
   const products = window.appState.db.Products || [];
   const activeProds = products.filter(p => (p["Status"] || "Active") !== "Archived");
   
-  const customCategories = (function() {
-    try {
-      const saved = localStorage.getItem("ali_custom_categories");
-      return saved ? JSON.parse(saved) : [];
-    } catch(e) { return []; }
-  })();
+  const customCategories = (typeof window.getCustomCategories === "function") 
+    ? window.getCustomCategories() 
+    : (function() {
+        try {
+          const saved = localStorage.getItem("ali_custom_categories");
+          return saved ? JSON.parse(saved) : [];
+        } catch(e) { return []; }
+      })();
   const categories = [...new Set([
     ...activeProds.map(p => p["Category"]).filter(Boolean),
     ...customCategories
