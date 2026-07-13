@@ -189,13 +189,14 @@ class ApiService {
         }
         return normalizeDbDates(db);
       } catch (e) {
-        const db = JSON.parse(JSON.stringify(demoDatabase));
+        const db = isDemoMode ? JSON.parse(JSON.stringify(demoDatabase)) : getEmptyDatabase();
         return normalizeDbDates(db);
       }
     }
-    // Populate with demo data on first load
-    localStorage.setItem(dbKey, JSON.stringify(demoDatabase));
-    return normalizeDbDates(JSON.parse(JSON.stringify(demoDatabase)));
+    // Populate with demo data if demo mode, else get empty database
+    const initialDb = isDemoMode ? JSON.parse(JSON.stringify(demoDatabase)) : getEmptyDatabase();
+    localStorage.setItem(dbKey, JSON.stringify(initialDb));
+    return normalizeDbDates(initialDb);
   }
 
   cleanupLocalArchivedCustomers() {
@@ -601,6 +602,9 @@ class ApiService {
     this.db.Invoices = [];
     this.db.InvoiceItems = [];
     this.db.Expenses = [];
+    
+    // Also reset custom categories to starting fresh
+    localStorage.removeItem("ali_custom_categories");
   }
 
   getPendingQueue() {
@@ -687,3 +691,22 @@ class ApiService {
 
 const api = new ApiService();
 window.api = api;
+
+function getEmptyDatabase() {
+  return {
+    Products: [],
+    Customers: [],
+    Invoices: [],
+    InvoiceItems: [],
+    Expenses: [],
+    Settings: [
+      { "Key": "Business Name", "Value": "محلات علي عبدالله للأدوات الكهربائية" },
+      { "Key": "Address", "Value": "" },
+      { "Key": "Phone Number", "Value": "+201018907086" },
+      { "Key": "Currency", "Value": "EGP" },
+      { "Key": "Admin Email", "Value": "admin@aliabdullah.com" },
+      { "Key": "Admin Password", "Value": "Ali2026_Secure" }
+    ],
+    Archive_Customers: []
+  };
+}
